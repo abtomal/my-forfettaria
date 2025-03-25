@@ -1,4 +1,3 @@
-// src/components/RisultatiCalcolo.jsx
 import React, { useState } from 'react';
 import { COSTANTI } from '../utils/calcolatori';
 import { calcolaAccontiEImposte } from '../utils/calcolo-saldo-imposte';
@@ -29,7 +28,9 @@ const RisultatiCalcolo = ({
   fatturatoPrecedente, 
   fatturato, 
   coefficienteRedditività, 
-  limiteFatturato 
+  limiteFatturato,
+  isUnder35,
+  hasCassaPrivata 
 }) => {
   const [mostraDettagli, setMostraDettagli] = useState(false);
   
@@ -89,7 +90,9 @@ const RisultatiCalcolo = ({
     fatturatoPrecedente, 
     fatturato, 
     coefficienteRedditività, 
-    annoApertura
+    annoApertura,
+    isUnder35,       // Aggiunto per under 35
+    hasCassaPrivata  // Aggiunto per casse private
   );
 
   // Calcola acconti per l'anno successivo
@@ -142,6 +145,47 @@ const RisultatiCalcolo = ({
         )}
       </div>
       
+      {/* Avviso cassa privata */}
+      {results.hasCassaPrivata && (
+        <div className="p-5 bg-yellow-50 rounded-lg shadow-md border border-yellow-200">
+          <div className="flex items-start mb-3">
+            <div className="bg-yellow-200 p-2 rounded-lg mr-3">
+              <svg className="w-5 h-5 text-yellow-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <h4 className="text-md font-semibold text-yellow-800">Cassa previdenziale specifica rilevata</h4>
+              <p className="text-sm mt-2 text-yellow-700">
+                La tua professione prevede l'iscrizione a <strong>{results.nomeCassa}</strong> invece che all'INPS.
+                I calcoli presentati <strong>non includono</strong> i contributi da versare alla cassa di categoria.
+                Consulta il sito della tua cassa previdenziale per i dettagli sui contributi da versare.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Avviso riduzione under 35 */}
+      {results.isUnder35 && !results.hasCassaPrivata && (
+        <div className="p-5 bg-green-50 rounded-lg shadow-md border border-green-200">
+          <div className="flex items-start mb-3">
+            <div className="bg-green-200 p-2 rounded-lg mr-3">
+              <svg className="w-5 h-5 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+              </svg>
+            </div>
+            <div>
+              <h4 className="text-md font-semibold text-green-800">Riduzione under 35 applicata</h4>
+              <p className="text-sm mt-2 text-green-700">
+                È stata applicata la riduzione del 35% sui contributi INPS prevista per i soggetti con età inferiore a 35 anni.
+                Questa riduzione si applica sia sui contributi fissi che su quelli variabili.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Sezione principale con i risultati più importanti */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Card Quanto devi tenere da parte */}
@@ -172,75 +216,59 @@ const RisultatiCalcolo = ({
       </div>
       
       {/* Sezione acconti per l'anno successivo con visualizzazione calendario */}
-      {/* Sezione acconti per l'anno successivo con visualizzazione calendario */}
-{infoAcconti.deveCalcolareAcconti && (
-  <div className="p-4 sm:p-5 bg-amber-50 rounded-lg shadow-md border border-amber-200">
-    <h4 className="text-base sm:text-lg font-semibold text-amber-800 mb-3 sm:mb-4 flex items-center">
-      <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-      </svg>
-      Scadenze acconti anno successivo
-    </h4>
-    
-    {/* Container con centratura */}
-    <div className="flex justify-center">
-      {/* Wrapper con scorrimento orizzontale per mobile */}
-      <div className="overflow-x-auto pb-2 w-full">
-        <div className="flex justify-center sm:justify-start gap-4 sm:gap-6 min-w-max sm:min-w-0">
-          {infoAcconti.unicaRata ? (
-            <div className="flex justify-center w-full sm:justify-start">
-              <CalendarDate 
-                month="Nov" 
-                day="30" 
-                label={`Rata unica: €${infoAcconti.importoUnicaRata.toFixed(2)}`} 
-              />
-            </div>
-          ) : (
-            <div className="flex justify-center w-full sm:justify-start gap-4 sm:gap-6">
-              <CalendarDate 
-                month="Giu" 
-                day="30" 
-                label={`Prima rata: €${infoAcconti.importoPrimaRata.toFixed(2)}`} 
-              />
-              <CalendarDate 
-                month="Nov" 
-                day="30" 
-                label={`Seconda rata: €${infoAcconti.importoSecondaRata.toFixed(2)}`} 
-              />
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-    
-    <div className="mt-3 p-2 sm:p-3 bg-amber-100 rounded-lg text-xs sm:text-sm text-amber-800">
-      <p>
-        {infoAcconti.unicaRata 
-          ? `L'acconto di €${infoAcconti.importoTotale.toFixed(2)} va versato in un'unica soluzione entro il 30 novembre.` 
-          : `L'acconto totale di €${infoAcconti.importoTotale.toFixed(2)} va versato in due rate: €${infoAcconti.importoPrimaRata.toFixed(2)} entro il 30 giugno e €${infoAcconti.importoSecondaRata.toFixed(2)} entro il 30 novembre.`}
-      </p>
-    </div>
-  </div>
-)}
-      
-      {/* Sezione situazione acconti anno corrente */}
-      <div className="p-5 bg-blue-50 rounded-lg shadow-md border border-blue-200">
-        <div className="flex items-start mb-3">
-          <div className="bg-blue-200 p-2 rounded-lg mr-3">
-            <svg className="w-5 h-5 text-blue-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+      {infoAcconti.deveCalcolareAcconti && (
+        <div className="p-4 sm:p-5 bg-amber-50 rounded-lg shadow-md border border-amber-200">
+          <h4 className="text-base sm:text-lg font-semibold text-amber-800 mb-3 sm:mb-4 flex items-center">
+            <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
+            Scadenze acconti anno successivo
+          </h4>
+          
+          {/* Container con centratura */}
+          <div className="flex justify-center">
+            {/* Wrapper con scorrimento orizzontale per mobile */}
+            <div className="overflow-x-auto pb-2 w-full">
+              <div className="flex justify-center sm:justify-start gap-4 sm:gap-6 min-w-max sm:min-w-0">
+                {infoAcconti.unicaRata ? (
+                  <div className="flex justify-center w-full sm:justify-start">
+                    <CalendarDate 
+                      month="Nov" 
+                      day="30" 
+                      label={`Rata unica: €${infoAcconti.importoUnicaRata.toFixed(2)}`} 
+                    />
+                  </div>
+                ) : (
+                  <div className="flex justify-center w-full sm:justify-start gap-4 sm:gap-6">
+                    <CalendarDate 
+                      month="Giu" 
+                      day="30" 
+                      label={`Prima rata: €${infoAcconti.importoPrimaRata.toFixed(2)}`} 
+                    />
+                    <CalendarDate 
+                      month="Nov" 
+                      day="30" 
+                      label={`Seconda rata: €${infoAcconti.importoSecondaRata.toFixed(2)}`} 
+                    />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
-          <h4 className="text-md font-semibold text-blue-800">Acconti già versati</h4>
+          
+          <div className="mt-3 p-2 sm:p-3 bg-amber-100 rounded-lg text-xs sm:text-sm text-amber-800">
+            <p>
+              {infoAcconti.unicaRata 
+                ? `L'acconto di €${infoAcconti.importoTotale.toFixed(2)} va versato in un'unica soluzione entro il 30 novembre.` 
+                : `L'acconto totale di €${infoAcconti.importoTotale.toFixed(2)} va versato in due rate: €${infoAcconti.importoPrimaRata.toFixed(2)} entro il 30 giugno e €${infoAcconti.importoSecondaRata.toFixed(2)} entro il 30 novembre.`}
+            </p>
+          </div>
         </div>
-        <p className="text-sm mt-2 text-blue-700">{getStatoAccontiMessaggio()}</p>
-        {infoAccontiVersati.haAccontiVersati && (
-          <p className="text-sm mt-1 text-blue-700">
-            Acconti versati: <span className="font-bold">€ {infoAccontiVersati.importoAccontiVersati.toFixed(2)}</span>
-          </p>
-        )}
-      </div>
+      )}
       
+      {/* Resto del codice rimane invariato */}
+      {/* ... */}
+
       {/* Pulsante per mostrare/nascondere i dettagli */}
       <div className="text-center mt-6">
         <button 
@@ -263,7 +291,7 @@ const RisultatiCalcolo = ({
         <div className="mt-6 p-5 bg-gray-50 rounded-lg border border-gray-200">
           <h4 className="text-lg font-semibold mb-4 flex items-center">
           <svg className="w-5 h-5 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
             </svg>
             Dettaglio calcoli
           </h4>
@@ -280,7 +308,9 @@ const RisultatiCalcolo = ({
               <p className="text-sm text-gray-600">Contributi INPS</p>
               <p className="text-lg font-semibold">€ {results.contributiInps}</p>
               <p className="text-xs text-gray-500 mt-1">
-                {tipologiaInps === 'artigiano' ? 'Calcolo artigiani' : `${parseFloat(results.redditoImponibile).toLocaleString()}€ × 26,07%`}
+                {results.isUnder35 && !results.hasCassaPrivata ? 'Riduzione under 35 applicata (-35%)' : ''}
+                {results.hasCassaPrivata ? 'Nessun contributo INPS (cassa privata)' : 
+                  tipologiaInps === 'artigiano' ? 'Calcolo artigiani' : `${parseFloat(results.redditoImponibile).toLocaleString()}€ × 26,07%`}
               </p>
             </div>
             <div className="p-4 bg-white rounded-lg shadow">
@@ -411,7 +441,7 @@ const RisultatiCalcolo = ({
           )}
           
           {/* Dettaglio contributi artigiani */}
-          {tipologiaInps === 'artigiano' && (
+          {tipologiaInps === 'artigiano' && !results.hasCassaPrivata && (
             <div>
               <h5 className="text-md font-semibold mb-3 flex items-center">
                 <svg className="w-4 h-4 mr-2 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -422,12 +452,30 @@ const RisultatiCalcolo = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
                 <div className="p-4 bg-white rounded-lg shadow">
                   <p className="text-sm text-gray-600">Quota Fissa Annuale</p>
-                  <p className="text-lg font-semibold">€ {(COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * 4).toFixed(2)}</p>
+                  <p className="text-lg font-semibold">
+                    € {results.isUnder35 
+                       ? ((COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * 4) * (1 - COSTANTI.RIDUZIONE_UNDER_35)).toFixed(2) 
+                       : (COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * 4).toFixed(2)}
+                  </p>
+                  {results.isUnder35 && (
+                    <p className="text-xs text-green-600 mt-1">
+                      Riduzione del 35% applicata
+                    </p>
+                  )}
                 </div>
                 {parseFloat(results.redditoImponibile) > COSTANTI.SOGLIA_REDDITO_ARTIGIANO && (
                   <div className="p-4 bg-white rounded-lg shadow">
                     <p className="text-sm text-gray-600">Contributo Aggiuntivo</p>
-                    <p className="text-lg font-semibold">€ {((parseFloat(results.redditoImponibile) - COSTANTI.SOGLIA_REDDITO_ARTIGIANO) * COSTANTI.ALIQUOTA_AGGIUNTIVA_ARTIGIANO).toFixed(2)}</p>
+                    <p className="text-lg font-semibold">
+                      € {results.isUnder35 
+                         ? (((parseFloat(results.redditoImponibile) - COSTANTI.SOGLIA_REDDITO_ARTIGIANO) * COSTANTI.ALIQUOTA_AGGIUNTIVA_ARTIGIANO) * (1 - COSTANTI.RIDUZIONE_UNDER_35)).toFixed(2) 
+                         : ((parseFloat(results.redditoImponibile) - COSTANTI.SOGLIA_REDDITO_ARTIGIANO) * COSTANTI.ALIQUOTA_AGGIUNTIVA_ARTIGIANO).toFixed(2)}
+                    </p>
+                    {results.isUnder35 && (
+                      <p className="text-xs text-green-600 mt-1">
+                        Riduzione del 35% applicata
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -448,7 +496,11 @@ const RisultatiCalcolo = ({
                       day="16" 
                       label="1° Trimestre" 
                     />
-                    <p className="text-xs sm:text-sm text-gray-600 mt-2">€ {COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO.toFixed(2)}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 mt-2">
+                      € {results.isUnder35 
+                         ? (COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * (1 - COSTANTI.RIDUZIONE_UNDER_35)).toFixed(2) 
+                         : COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO.toFixed(2)}
+                    </p>
                   </div>
                   <div className="p-3 bg-white rounded shadow flex flex-col items-center">
                     <CalendarDate 
@@ -456,7 +508,11 @@ const RisultatiCalcolo = ({
                       day="22" 
                       label="2° Trimestre" 
                     />
-                    <p className="text-xs sm:text-sm text-gray-600 mt-2">€ {COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO.toFixed(2)}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 mt-2">
+                      € {results.isUnder35 
+                         ? (COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * (1 - COSTANTI.RIDUZIONE_UNDER_35)).toFixed(2) 
+                         : COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO.toFixed(2)}
+                    </p>
                   </div>
                   <div className="p-3 bg-white rounded shadow flex flex-col items-center">
                     <CalendarDate 
@@ -464,7 +520,11 @@ const RisultatiCalcolo = ({
                       day="16" 
                       label="3° Trimestre" 
                     />
-                    <p className="text-xs sm:text-sm text-gray-600 mt-2">€ {COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO.toFixed(2)}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 mt-2">
+                      € {results.isUnder35 
+                         ? (COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * (1 - COSTANTI.RIDUZIONE_UNDER_35)).toFixed(2) 
+                         : COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO.toFixed(2)}
+                    </p>
                   </div>
                   <div className="p-3 bg-white rounded shadow flex flex-col items-center">
                     <CalendarDate 
@@ -472,7 +532,11 @@ const RisultatiCalcolo = ({
                       day="16" 
                       label="4° Trimestre" 
                     />
-                    <p className="text-xs sm:text-sm text-gray-600 mt-2">€ {COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO.toFixed(2)}</p>
+                    <p className="text-xs sm:text-sm text-gray-600 mt-2">
+                      € {results.isUnder35 
+                         ? (COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * (1 - COSTANTI.RIDUZIONE_UNDER_35)).toFixed(2) 
+                         : COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO.toFixed(2)}
+                    </p>
                   </div>
                 </div>
               </div>

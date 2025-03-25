@@ -14,7 +14,11 @@ const ForfettariaCalculator = () => {
     altrePartiteIva: false,
     redditoDiLavoro: 0,
     coefficienteRedditività: 0,
-    tipologiaInps: 'commerciante'
+    tipologiaInps: 'commerciante',
+    isUnder35: false,          // Aggiunto per under 35
+    hasCassaPrivata: false,    // Aggiunto per casse private
+    cassaPrivata: '',          // Aggiunto per casse private
+    nomeCassa: ''             // Aggiunto per casse private
   });
 
   const [errors, setErrors] = useState([]);
@@ -90,11 +94,13 @@ const ForfettariaCalculator = () => {
     // Calcolo del reddito imponibile lordo
     const redditoImponibile = fatturato * coefficiente;
     
-    // Calcolo dei contributi INPS
+    // Calcolo dei contributi INPS - aggiunti i parametri per under 35 e cassa privata
     const contributiInps = calcolaContributiInps(
       redditoImponibile, 
       formData.tipologiaInps, 
-      formData.pensionato
+      formData.pensionato,
+      formData.isUnder35,
+      formData.hasCassaPrivata
     );
     
     // Calcolo dell'imponibile netto (sottraendo i contributi INPS)
@@ -124,7 +130,10 @@ const ForfettariaCalculator = () => {
       totaleCosti: totaleCosti.toFixed(2),
       nettoStimato: nettoStimato.toFixed(2),
       aliquotaApplicata: (aliquotaImposta * 100),
-      tassazioneEffettiva
+      tassazioneEffettiva,
+      isUnder35: formData.isUnder35,
+      hasCassaPrivata: formData.hasCassaPrivata,
+      nomeCassa: formData.nomeCassa
     });
   };
 
@@ -148,6 +157,8 @@ const ForfettariaCalculator = () => {
           fatturato={formData.fatturato}
           coefficienteRedditività={formData.coefficienteRedditività}
           limiteFatturato={limiteFatturato}
+          isUnder35={formData.isUnder35}
+          hasCassaPrivata={formData.hasCassaPrivata}
         />
       </div>
     </div>

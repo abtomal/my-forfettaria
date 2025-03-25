@@ -1,6 +1,7 @@
 // src/components/GestioneFatture.jsx 
 import React, { useState, useEffect } from 'react';
 import { atecoData } from '../../data/atecoData'; 
+import { verificaCassaPrivata } from '../../utils/calcolatori'; 
 import ScadenzeFatture from './ScadenzeFatture';
 import ProiezioniContabilita from '../ProiezioniContabilita';
 import HeaderGestioneFatture from './HeaderGestioneFatture';
@@ -20,6 +21,9 @@ const GestioneFatture = () => {
     dataEmissione: new Date().toISOString().split('T')[0],
     dataScadenza: '',
     pagata: false,
+    hasCassaPrivata: false, // Aggiunto per casse private
+    cassaPrivata: '',      // Aggiunto per casse private
+    nomeCassa: ''         // Aggiunto per casse private
   });
 
   const [fattureSalvate, setFattureSalvate] = useState([]);
@@ -42,7 +46,11 @@ const GestioneFatture = () => {
     coefficienteRedditività: 0,
     annoApertura: new Date().getFullYear() - 1, // Default anno precedente
     dataApertura: new Date(new Date().getFullYear() - 1, 0, 1).toISOString().split('T')[0], // Default 1 gennaio anno precedente
-    tipologiaInps: 'commerciante'
+    tipologiaInps: 'commerciante',
+    isUnder35: false,          // Aggiunto per under 35
+    hasCassaPrivata: false,    // Aggiunto per casse private
+    cassaPrivata: '',          // Aggiunto per casse private
+    nomeCassa: ''             // Aggiunto per casse private
   });
 
   // Funzione per calcolare il limite di fatturato in base alla data di apertura
@@ -110,7 +118,10 @@ const GestioneFatture = () => {
           setFormData(prevFormData => ({
             ...prevFormData,
             codiceAteco: parsedData.codiceAteco,
-            coefficienteRedditività: parsedData.coefficienteRedditività || 0
+            coefficienteRedditività: parsedData.coefficienteRedditività || 0,
+            hasCassaPrivata: parsedData.hasCassaPrivata || false,
+            cassaPrivata: parsedData.cassaPrivata || '',
+            nomeCassa: parsedData.nomeCassa || ''
           }));
           setSearchTerm(parsedData.codiceAteco);
           setSearchTermImpostazioni(parsedData.codiceAteco);
@@ -182,6 +193,9 @@ const GestioneFatture = () => {
     if (!nuovaFattura.codiceAteco && datiUtente.codiceAteco) {
       nuovaFattura.codiceAteco = datiUtente.codiceAteco;
       nuovaFattura.coefficienteRedditività = datiUtente.coefficienteRedditività;
+      nuovaFattura.hasCassaPrivata = datiUtente.hasCassaPrivata;
+      nuovaFattura.cassaPrivata = datiUtente.cassaPrivata;
+      nuovaFattura.nomeCassa = datiUtente.nomeCassa;
     }
     
     // Aggiungi l'ID e la data di registrazione
@@ -200,7 +214,10 @@ const GestioneFatture = () => {
       const nuoviDatiUtente = {
         ...datiUtente,
         codiceAteco: formData.codiceAteco,
-        coefficienteRedditività: formData.coefficienteRedditività
+        coefficienteRedditività: formData.coefficienteRedditività,
+        hasCassaPrivata: formData.hasCassaPrivata,
+        cassaPrivata: formData.cassaPrivata,
+        nomeCassa: formData.nomeCassa
       };
       setDatiUtente(nuoviDatiUtente);
       localStorage.setItem('userData', JSON.stringify(nuoviDatiUtente));
@@ -210,6 +227,9 @@ const GestioneFatture = () => {
       fatturato: '',
       codiceAteco: formData.codiceAteco, // Mantiene il codice ATECO
       coefficienteRedditività: formData.coefficienteRedditività, // Mantiene il coefficiente
+      hasCassaPrivata: formData.hasCassaPrivata, // Mantiene le info sulla cassa privata
+      cassaPrivata: formData.cassaPrivata,
+      nomeCassa: formData.nomeCassa,
       descrizione: '',
       dataEmissione: new Date().toISOString().split('T')[0],
       dataScadenza: '',
@@ -244,7 +264,10 @@ const GestioneFatture = () => {
       ...datiUtente,
       annoApertura: parseInt(datiUtente.annoApertura),
       codiceAteco: datiUtente.codiceAteco || formData.codiceAteco,
-      coefficienteRedditività: datiUtente.coefficienteRedditività || formData.coefficienteRedditività
+      coefficienteRedditività: datiUtente.coefficienteRedditività || formData.coefficienteRedditività,
+      hasCassaPrivata: datiUtente.hasCassaPrivata || formData.hasCassaPrivata,
+      cassaPrivata: datiUtente.cassaPrivata || formData.cassaPrivata,
+      nomeCassa: datiUtente.nomeCassa || formData.nomeCassa
     };
     
     // Se c'è un codice ATECO, aggiorna anche il form principale
@@ -252,7 +275,10 @@ const GestioneFatture = () => {
       setFormData(prevFormData => ({
         ...prevFormData,
         codiceAteco: nuoviDatiUtente.codiceAteco,
-        coefficienteRedditività: nuoviDatiUtente.coefficienteRedditività
+        coefficienteRedditività: nuoviDatiUtente.coefficienteRedditività,
+        hasCassaPrivata: nuoviDatiUtente.hasCassaPrivata,
+        cassaPrivata: nuoviDatiUtente.cassaPrivata,
+        nomeCassa: nuoviDatiUtente.nomeCassa
       }));
       setSearchTerm(nuoviDatiUtente.codiceAteco);
     }
@@ -264,11 +290,17 @@ const GestioneFatture = () => {
 
   // Quando si seleziona un codice ATECO nel form principale
   const selezionaAteco = (ateco) => {
+    // Verificare se c'è una cassa privata per questo ATECO
+    const risultatoCassa = verificaCassaPrivata(ateco.codice);
+    
     // Aggiorna il form corrente
     setFormData({
       ...formData,
       codiceAteco: ateco.codice,
-      coefficienteRedditività: ateco.coefficiente
+      coefficienteRedditività: ateco.coefficiente,
+      hasCassaPrivata: risultatoCassa.hasCassaPrivata,
+      cassaPrivata: risultatoCassa.cassaPrivata || '',
+      nomeCassa: risultatoCassa.nomeCassa || ''
     });
     
     // Aggiorna anche i dati utente
@@ -276,7 +308,10 @@ const GestioneFatture = () => {
       ...datiUtente,
       codiceAteco: ateco.codice,
       coefficienteRedditività: ateco.coefficiente,
-      tipologiaInps: ateco.tipo || 'commerciante'
+      tipologiaInps: ateco.tipo || 'commerciante',
+      hasCassaPrivata: risultatoCassa.hasCassaPrivata,
+      cassaPrivata: risultatoCassa.cassaPrivata || '',
+      nomeCassa: risultatoCassa.nomeCassa || ''
     };
     
     setDatiUtente(nuoviDatiUtente);
@@ -288,12 +323,18 @@ const GestioneFatture = () => {
 
   // Quando si seleziona un codice ATECO nelle impostazioni
   const selezionaAtecoImpostazioni = (ateco) => {
+    // Verificare se c'è una cassa privata per questo ATECO
+    const risultatoCassa = verificaCassaPrivata(ateco.codice);
+    
     // Aggiorna i dati utente
     const nuoviDatiUtente = {
       ...datiUtente,
       codiceAteco: ateco.codice,
       coefficienteRedditività: ateco.coefficiente,
-      tipologiaInps: ateco.tipo || 'commerciante'
+      tipologiaInps: ateco.tipo || 'commerciante',
+      hasCassaPrivata: risultatoCassa.hasCassaPrivata,
+      cassaPrivata: risultatoCassa.cassaPrivata || '',
+      nomeCassa: risultatoCassa.nomeCassa || ''
     };
     
     setDatiUtente(nuoviDatiUtente);
@@ -303,7 +344,10 @@ const GestioneFatture = () => {
     setFormData({
       ...formData,
       codiceAteco: ateco.codice,
-      coefficienteRedditività: ateco.coefficiente
+      coefficienteRedditività: ateco.coefficiente,
+      hasCassaPrivata: risultatoCassa.hasCassaPrivata,
+      cassaPrivata: risultatoCassa.cassaPrivata || '',
+      nomeCassa: risultatoCassa.nomeCassa || ''
     });
     setSearchTerm(ateco.codice);
     
@@ -431,6 +475,8 @@ const GestioneFatture = () => {
             annoApertura={datiUtente.annoApertura}
             dataApertura={datiUtente.dataApertura}
             tipologiaInps={datiUtente.tipologiaInps}
+            isUnder35={datiUtente.isUnder35}  // Aggiunto per under 35
+            hasCassaPrivata={datiUtente.hasCassaPrivata}  // Aggiunto per casse private
             onClose={() => setMostraProiezioni(false)}
           />
         )}

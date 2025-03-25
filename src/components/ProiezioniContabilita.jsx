@@ -20,7 +20,17 @@ const CalendarDate = ({ month, day, label }) => {
   );
 };
 
-const ProiezioniContabilita = ({ fatture, codiceAteco, coefficienteRedditività, annoApertura, dataApertura, tipologiaInps, onClose }) => {
+const ProiezioniContabilita = ({ 
+  fatture, 
+  codiceAteco, 
+  coefficienteRedditività, 
+  annoApertura, 
+  dataApertura, 
+  tipologiaInps, 
+  onClose,
+  isUnder35 = false,          // Aggiunti i nuovi parametri
+  hasCassaPrivata = false
+}) => {
   const [mostraDettagli, setMostraDettagli] = useState(false);
   const [results, setResults] = useState(null);
   const [debugInfo, setDebugInfo] = useState({});
@@ -55,19 +65,35 @@ const ProiezioniContabilita = ({ fatture, codiceAteco, coefficienteRedditività,
     
     // Calcola i contributi INPS
     let contributiInps = 0;
-    if (tipologiaInps === 'artigiano') {
+    
+    // Non calcolare i contributi INPS se l'utente ha una cassa privata
+    if (hasCassaPrivata) {
+      contributiInps = 0;
+    } else if (tipologiaInps === 'artigiano') {
       // Quota fissa annuale
-      let contributo = COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * 4;
+      let contributoFisso = COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * 4;
       
       // Contributo aggiuntivo se il reddito supera la soglia
+      let contributoAggiuntivo = 0;
       if (redditoImponibile > COSTANTI.SOGLIA_REDDITO_ARTIGIANO) {
-        contributo += (redditoImponibile - COSTANTI.SOGLIA_REDDITO_ARTIGIANO) * COSTANTI.ALIQUOTA_AGGIUNTIVA_ARTIGIANO;
+        contributoAggiuntivo = (redditoImponibile - COSTANTI.SOGLIA_REDDITO_ARTIGIANO) * COSTANTI.ALIQUOTA_AGGIUNTIVA_ARTIGIANO;
       }
       
-      contributiInps = contributo;
+      // Calcolo del contributo totale
+      contributiInps = contributoFisso + contributoAggiuntivo;
+      
+      // Applica riduzione under 35 se applicabile
+      if (isUnder35) {
+        contributiInps = contributiInps * (1 - COSTANTI.RIDUZIONE_UNDER_35);
+      }
     } else {
       // Commerciante
       contributiInps = redditoImponibile * COSTANTI.ALIQUOTA_COMMERCIANTE;
+      
+      // Applica riduzione under 35 se applicabile
+      if (isUnder35) {
+        contributiInps = contributiInps * (1 - COSTANTI.RIDUZIONE_UNDER_35);
+      }
     }
     
     // Calcola l'imponibile netto (sottraendo i contributi INPS dal reddito imponibile)
@@ -99,12 +125,14 @@ const ProiezioniContabilita = ({ fatture, codiceAteco, coefficienteRedditività,
       totaleCosti: totaleCosti.toFixed(2),
       nettoStimato: nettoStimato.toFixed(2),
       aliquotaApplicata: (aliquotaImposta * 100),
-      tassazioneEffettiva
+      tassazioneEffettiva,
+      isUnder35,           // Aggiunti i nuovi campi
+      hasCassaPrivata
     });
-  }, [fatture, codiceAteco, coefficienteRedditività, annoApertura, tipologiaInps]);
+  }, [fatture, codiceAteco, coefficienteRedditività, annoApertura, tipologiaInps, isUnder35, hasCassaPrivata]);
   
   if (!results) return <div className="p-6 text-center">Calcolo in corso...</div>;
-  
+
   // Calcolo degli acconti per l'anno successivo
   const calcolaAccontiAnnoSuccessivo = () => {
     const annoCorrente = new Date().getFullYear();
@@ -195,6 +223,45 @@ const ProiezioniContabilita = ({ fatture, codiceAteco, coefficienteRedditività,
             <p>Imposta sostitutiva: <span className="font-bold">€ {results.impostaSostitutiva}</span></p>
           </div>
           
+          {/* Avviso cassa privata */}
+          {results.hasCassaPrivata && (
+            <div className="p-5 bg-yellow-50 rounded-lg shadow-md border border-yellow-200">
+              <div className="flex items-start mb-3">
+                <div className="bg-yellow-200 p-2 rounded-lg mr-3">
+                  <svg className="w-5 h-5 text-yellow-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-md font-semibold text-yellow-800">Cassa previdenziale specifica</h4>
+                  <p className="text-sm mt-2 text-yellow-700">
+                    I calcoli presentati <strong>non includono</strong> i contributi da versare alla cassa di categoria.
+                    Consulta il sito della tua cassa previdenziale per i dettagli sui contributi da versare.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Avviso riduzione under 35 */}
+          {results.isUnder35 && !results.hasCassaPrivata && (
+            <div className="p-5 bg-green-50 rounded-lg shadow-md border border-green-200">
+              <div className="flex items-start mb-3">
+                <div className="bg-green-200 p-2 rounded-lg mr-3">
+                  <svg className="w-5 h-5 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <div>
+                  <h4 className="text-md font-semibold text-green-800">Riduzione under 35 applicata</h4>
+                  <p className="text-sm mt-2 text-green-700">
+                    È stata applicata la riduzione del 35% sui contributi INPS prevista per i soggetti con età inferiore a 35 anni.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Sezione principale con i risultati più importanti */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Card grande: Quanto devi tenere da parte */}
@@ -202,7 +269,7 @@ const ProiezioniContabilita = ({ fatture, codiceAteco, coefficienteRedditività,
               <h4 className="text-lg font-semibold text-red-800">Quanto devi tenere da parte</h4>
               <p className="text-3xl font-bold text-red-800 my-3">€ {totaleCostiConAcconti.toFixed(2)}</p>
               <p className="text-sm text-red-700">
-                Include tasse, contributi e acconti per l'anno successivo
+                Include tasse, contributi e acconti
               </p>
             </div>
             
@@ -211,14 +278,14 @@ const ProiezioniContabilita = ({ fatture, codiceAteco, coefficienteRedditività,
               <h4 className="text-lg font-semibold text-blue-800">Quanto puoi spendere</h4>
               <p className="text-3xl font-bold text-blue-800 my-3">€ {nettoStimatoConAcconti.toFixed(2)}</p>
               <p className="text-sm text-blue-700">
-                Ciò che rimane dopo tasse, contributi e acconti
+                Ciò che rimane dopo tasse e contributi
               </p>
             </div>
           </div>
           
           {/* Sezione acconti per l'anno successivo con visualizzazione calendario */}
-          {infoAcconti.deveCalcolareAcconti ? (
-            <div className="p-5 bg-amber-50 rounded-lg shadow border border-amber-200">
+          {infoAcconti.deveCalcolareAcconti && (
+            <div className="p-5 bg-amber-50 rounded-lg shadow-md border border-amber-200">
               <h4 className="text-lg font-semibold text-amber-800 mb-4">Acconti per l'anno successivo</h4>
               
               {/* Container con centratura */}
@@ -256,11 +323,6 @@ const ProiezioniContabilita = ({ fatture, codiceAteco, coefficienteRedditività,
                 {infoAcconti.messaggio}
               </p>
             </div>
-          ) : (
-            <div className="p-5 bg-amber-50 rounded-lg shadow border border-amber-200">
-              <h4 className="text-lg font-semibold text-amber-800">Acconti per l'anno successivo</h4>
-              <p className="text-sm mt-2">{infoAcconti.messaggio}</p>
-            </div>
           )}
           
           {/* Pulsante per mostrare/nascondere i dettagli */}
@@ -287,7 +349,12 @@ const ProiezioniContabilita = ({ fatture, codiceAteco, coefficienteRedditività,
                 <div className="p-4 bg-white rounded shadow">
                   <p className="text-sm text-gray-600">Contributi INPS</p>
                   <p className="text-lg font-semibold">€ {results.contributiInps}</p>
-                  <p className="text-sm text-gray-500 mt-1">{tipologiaInps === 'artigiano' ? 'Calcolo artigiani' : 'Calcolo commercianti'}</p>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {results.hasCassaPrivata ? 'Nessun contributo INPS (cassa privata)' : 
+                     `${tipologiaInps === 'artigiano' ? 'Calcolo artigiani' : 'Calcolo commercianti'}${
+                       results.isUnder35 ? ' con riduzione under 35' : ''
+                     }`}
+                  </p>
                 </div>
                 <div className="p-4 bg-white rounded shadow">
                   <p className="text-sm text-gray-600">Imponibile Netto</p>
@@ -314,29 +381,31 @@ const ProiezioniContabilita = ({ fatture, codiceAteco, coefficienteRedditività,
               {/* Dettaglio acconti anno successivo */}
               {infoAcconti.deveCalcolareAcconti && (
                 <div className="mb-6">
-                  <h5 className="text-md font-semibold mb-3">Dettaglio acconti anno successivo</h5>
+                  <h5 className="text-md font-semibold mb-3">Dettaglio Acconti Anno Successivo</h5>
                   
                   {infoAcconti.unicaRata ? (
-                    <div className="grid grid-cols-1 gap-4">
-                      <div className="p-4 bg-white rounded shadow">
-                        <div className="flex justify-between items-center">
-                          <div>
-                            <p className="font-semibold">Rata unica</p>
-                            <p className="text-sm text-gray-600">Scadenza: {infoAcconti.scadenzaUnicaRata}</p>
-                          </div>
-                          <p className="text-xl font-bold">€ {infoAcconti.importoUnicaRata.toFixed(2)}</p>
+                    <div className="p-4 bg-white rounded shadow">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="font-semibold">Rata unica</p>
+                          <p className="text-sm text-gray-600">Scadenza: {infoAcconti.scadenzaUnicaRata}</p>
+                        </div>
+                        <div className="bg-amber-50 px-3 py-1 rounded border border-amber-200">
+                          <p className="text-lg font-bold">€ {infoAcconti.importoUnicaRata.toFixed(2)}</p>
                         </div>
                       </div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-3">
                       <div className="p-4 bg-white rounded shadow">
                         <div className="flex justify-between items-center">
                           <div>
                             <p className="font-semibold">Prima rata (50%)</p>
                             <p className="text-sm text-gray-600">Scadenza: {infoAcconti.scadenzaPrimaRata}</p>
                           </div>
-                          <p className="text-xl font-bold">€ {infoAcconti.importoPrimaRata.toFixed(2)}</p>
+                          <div className="bg-amber-50 px-3 py-1 rounded border border-amber-200">
+                            <p className="text-lg font-bold">€ {infoAcconti.importoPrimaRata.toFixed(2)}</p>
+                          </div>
                         </div>
                       </div>
                       <div className="p-4 bg-white rounded shadow">
@@ -345,7 +414,9 @@ const ProiezioniContabilita = ({ fatture, codiceAteco, coefficienteRedditività,
                             <p className="font-semibold">Seconda rata (50%)</p>
                             <p className="text-sm text-gray-600">Scadenza: {infoAcconti.scadenzaSecondaRata}</p>
                           </div>
-                          <p className="text-xl font-bold">€ {infoAcconti.importoSecondaRata.toFixed(2)}</p>
+                          <div className="bg-amber-50 px-3 py-1 rounded border border-amber-200">
+                            <p className="text-lg font-bold">€ {infoAcconti.importoSecondaRata.toFixed(2)}</p>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -354,18 +425,36 @@ const ProiezioniContabilita = ({ fatture, codiceAteco, coefficienteRedditività,
               )}
               
               {/* Dettaglio contributi artigiani */}
-              {tipologiaInps === 'artigiano' && (
+              {tipologiaInps === 'artigiano' && !results.hasCassaPrivata && (
                 <div>
                   <h5 className="text-md font-semibold mb-3">Dettaglio Contributi Artigiani</h5>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <div className="p-4 bg-white rounded shadow">
                       <p className="text-sm text-gray-600">Quota Fissa Annuale</p>
-                      <p className="text-lg font-semibold">€ {(COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * 4).toFixed(2)}</p>
+                      <p className="text-lg font-semibold">
+                        € {results.isUnder35 
+                           ? ((COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * 4) * (1 - COSTANTI.RIDUZIONE_UNDER_35)).toFixed(2) 
+                           : (COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * 4).toFixed(2)}
+                      </p>
+                      {results.isUnder35 && (
+                        <p className="text-xs text-green-600 mt-1">
+                          Riduzione del 35% applicata
+                        </p>
+                      )}
                     </div>
                     {parseFloat(results.redditoImponibile) > COSTANTI.SOGLIA_REDDITO_ARTIGIANO && (
                       <div className="p-4 bg-white rounded shadow">
                         <p className="text-sm text-gray-600">Contributo Aggiuntivo</p>
-                        <p className="text-lg font-semibold">€ {((parseFloat(results.redditoImponibile) - COSTANTI.SOGLIA_REDDITO_ARTIGIANO) * COSTANTI.ALIQUOTA_AGGIUNTIVA_ARTIGIANO).toFixed(2)}</p>
+                        <p className="text-lg font-semibold">
+                          € {results.isUnder35 
+                             ? (((parseFloat(results.redditoImponibile) - COSTANTI.SOGLIA_REDDITO_ARTIGIANO) * COSTANTI.ALIQUOTA_AGGIUNTIVA_ARTIGIANO) * (1 - COSTANTI.RIDUZIONE_UNDER_35)).toFixed(2) 
+                             : ((parseFloat(results.redditoImponibile) - COSTANTI.SOGLIA_REDDITO_ARTIGIANO) * COSTANTI.ALIQUOTA_AGGIUNTIVA_ARTIGIANO).toFixed(2)}
+                        </p>
+                        {results.isUnder35 && (
+                          <p className="text-xs text-green-600 mt-1">
+                            Riduzione del 35% applicata
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -384,7 +473,11 @@ const ProiezioniContabilita = ({ fatture, codiceAteco, coefficienteRedditività,
                             day="16" 
                             label="1° Trimestre" 
                           />
-                          <p className="text-xs sm:text-sm text-gray-600 mt-2 text-center">€ {COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO.toFixed(2)}</p>
+                          <p className="text-xs sm:text-sm text-gray-600 mt-2 text-center">
+                            € {results.isUnder35 
+                               ? (COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * (1 - COSTANTI.RIDUZIONE_UNDER_35)).toFixed(2) 
+                               : COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO.toFixed(2)}
+                          </p>
                         </div>
                         <div className="p-3 bg-white rounded shadow">
                           <CalendarDate 
@@ -392,7 +485,11 @@ const ProiezioniContabilita = ({ fatture, codiceAteco, coefficienteRedditività,
                             day="22" 
                             label="2° Trimestre" 
                           />
-                          <p className="text-xs sm:text-sm text-gray-600 mt-2 text-center">€ {COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO.toFixed(2)}</p>
+                          <p className="text-xs sm:text-sm text-gray-600 mt-2 text-center">
+                            € {results.isUnder35 
+                               ? (COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * (1 - COSTANTI.RIDUZIONE_UNDER_35)).toFixed(2) 
+                               : COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO.toFixed(2)}
+                          </p>
                         </div>
                         <div className="p-3 bg-white rounded shadow">
                           <CalendarDate 
@@ -400,7 +497,11 @@ const ProiezioniContabilita = ({ fatture, codiceAteco, coefficienteRedditività,
                             day="16" 
                             label="3° Trimestre" 
                           />
-                          <p className="text-xs sm:text-sm text-gray-600 mt-2 text-center">€ {COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO.toFixed(2)}</p>
+                          <p className="text-xs sm:text-sm text-gray-600 mt-2 text-center">
+                            € {results.isUnder35 
+                               ? (COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * (1 - COSTANTI.RIDUZIONE_UNDER_35)).toFixed(2) 
+                               : COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO.toFixed(2)}
+                          </p>
                         </div>
                         <div className="p-3 bg-white rounded shadow">
                           <CalendarDate 
@@ -408,7 +509,11 @@ const ProiezioniContabilita = ({ fatture, codiceAteco, coefficienteRedditività,
                             day="16" 
                             label="4° Trimestre" 
                           />
-                          <p className="text-xs sm:text-sm text-gray-600 mt-2 text-center">€ {COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO.toFixed(2)}</p>
+                          <p className="text-xs sm:text-sm text-gray-600 mt-2 text-center">
+                          € {results.isUnder35 
+                               ? (COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * (1 - COSTANTI.RIDUZIONE_UNDER_35)).toFixed(2) 
+                               : COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO.toFixed(2)}
+                          </p>
                         </div>
                       </div>
                     </div>

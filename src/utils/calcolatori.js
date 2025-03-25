@@ -6,9 +6,54 @@ export const COSTANTI = {
   LIMITE_FATTURATO: 85000,
   LIMITE_FATTURATO_IMMEDIATO: 100000,
   LIMITE_REDDITO_LAVORO: 30000,
+  RIDUZIONE_UNDER_35: 0.35, // Aggiunta questa costante
 };
 
-export const calcolaContributiInps = (redditoImponibile, tipologiaInps, isPensionato) => {
+export const CASSE_PRIVATE = {
+  "FORENSE": {
+    nome: "Cassa Forense",
+    professioni: ["Avvocati", "Procuratori legali"],
+    codiciAteco: ["69.10.10", "69.10.20"]
+  },
+  "ENPAM": {
+    nome: "Cassa ENPAM",
+    professioni: ["Medici", "Odontoiatri"],
+    codiciAteco: ["86.21.00", "86.22.00", "86.23.00"]
+  },
+  "INPGI": {
+    nome: "INPGI",
+    professioni: ["Giornalisti"],
+    codiciAteco: ["58.13.00", "60.10.00", "63.91.00"]
+  },
+  // Altre casse private possono essere aggiunte qui
+};
+
+// Funzione per verificare se un codice ATECO è associato a una cassa privata
+export const verificaCassaPrivata = (codiceAteco) => {
+  for (const [chiave, cassa] of Object.entries(CASSE_PRIVATE)) {
+    if (cassa.codiciAteco.includes(codiceAteco)) {
+      return {
+        hasCassaPrivata: true,
+        cassaPrivata: chiave,
+        nomeCassa: cassa.nome,
+        professione: cassa.professioni[0]
+      };
+    }
+  }
+  
+  return {
+    hasCassaPrivata: false
+  };
+};
+
+export const calcolaContributiInps = (redditoImponibile, tipologiaInps, isPensionato, isUnder35 = false, hasCassaPrivata = false) => {
+  // Se l'utente ha una cassa privata, non calcola i contributi INPS
+  if (hasCassaPrivata) {
+    return 0;
+  }
+  
+  let contributi = 0;
+  
   if (tipologiaInps === 'artigiano') {
     const quotaFissa = COSTANTI.QUOTA_FISSA_TRIMESTRALE_ARTIGIANO * 4;
     
@@ -18,12 +63,22 @@ export const calcolaContributiInps = (redditoImponibile, tipologiaInps, isPensio
       contributoAggiuntivo = redditoEccedente * COSTANTI.ALIQUOTA_AGGIUNTIVA_ARTIGIANO;
     }
 
-    const totaleContributi = quotaFissa + contributoAggiuntivo;
-    return isPensionato ? totaleContributi / 2 : totaleContributi;
+    contributi = quotaFissa + contributoAggiuntivo;
   } else {
-    const contributi = redditoImponibile * COSTANTI.ALIQUOTA_COMMERCIANTE;
-    return isPensionato ? contributi / 2 : contributi;
+    contributi = redditoImponibile * COSTANTI.ALIQUOTA_COMMERCIANTE;
   }
+  
+  // Applica la riduzione per under 35
+  if (isUnder35) {
+    contributi = contributi * (1 - COSTANTI.RIDUZIONE_UNDER_35);
+  }
+  
+  // Applica la riduzione per pensionati
+  if (isPensionato) {
+    contributi = contributi / 2;
+  }
+  
+  return contributi;
 };
 
 export const verificaRequisiti = (formData) => {

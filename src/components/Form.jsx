@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { atecoData } from '../data/atecoData';
-import { COSTANTI } from '../utils/calcolatori.js';
+import { COSTANTI, verificaCassaPrivata } from '../utils/calcolatori.js';
 
 const CalcoloForm = ({ formData, setFormData, onSubmit, errors, limiteFatturato }) => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -53,6 +53,32 @@ const CalcoloForm = ({ formData, setFormData, onSubmit, errors, limiteFatturato 
       annoApertura: data.getFullYear() // Aggiorna automaticamente l'anno
     });
   };
+
+  // Verifica cassa privata quando cambia il codice ATECO
+  useEffect(() => {
+    if (formData.codiceAteco) {
+      const risultatoCassa = verificaCassaPrivata(formData.codiceAteco);
+      
+      if (risultatoCassa.hasCassaPrivata) {
+        setFormData({
+          ...formData,
+          hasCassaPrivata: true,
+          cassaPrivata: risultatoCassa.cassaPrivata,
+          nomeCassa: risultatoCassa.nomeCassa
+        });
+      } else {
+        // Reimposta solo se prima c'era una cassa privata
+        if (formData.hasCassaPrivata) {
+          setFormData({
+            ...formData,
+            hasCassaPrivata: false,
+            cassaPrivata: '',
+            nomeCassa: ''
+          });
+        }
+      }
+    }
+  }, [formData.codiceAteco]);
 
   return (
     <div>
@@ -143,7 +169,10 @@ const CalcoloForm = ({ formData, setFormData, onSubmit, errors, limiteFatturato 
                       ...formData,
                       codiceAteco: '',
                       coefficienteRedditività: 0,
-                      tipologiaInps: 'commerciante'
+                      tipologiaInps: 'commerciante',
+                      hasCassaPrivata: false,
+                      cassaPrivata: '',
+                      nomeCassa: ''
                     });
                   }}
                   className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
@@ -221,6 +250,22 @@ const CalcoloForm = ({ formData, setFormData, onSubmit, errors, limiteFatturato 
               </div>
             </div>
           )}
+          
+          {/* Avviso cassa privata */}
+          {formData.hasCassaPrivata && (
+            <div className="mt-4 p-3 bg-yellow-50 rounded-lg border border-yellow-200">
+              <div className="flex items-center">
+                <svg className="w-5 h-5 text-yellow-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <h4 className="font-medium">Cassa previdenziale rilevata</h4>
+              </div>
+              <p className="mt-2 text-sm">
+                In base al codice ATECO selezionato, dovresti essere iscritto a <strong>{formData.nomeCassa}</strong> invece che all'INPS.
+                I calcoli non includeranno i contributi INPS ma considera che dovrai versare i contributi alla cassa di categoria.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="bg-white p-5 rounded-lg shadow-sm border border-gray-100">
@@ -260,6 +305,20 @@ const CalcoloForm = ({ formData, setFormData, onSubmit, errors, limiteFatturato 
           </div>
 
           <div className="mt-4 space-y-3">
+            {/* Aggiunto per under 35 */}
+            <div className="flex items-center bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition-colors">
+              <input
+                type="checkbox"
+                id="isUnder35"
+                checked={formData.isUnder35}
+                onChange={(e) => setFormData({...formData, isUnder35: e.target.checked})}
+                className="w-4 h-4 text-blue-600 mr-3 focus:ring-blue-500"
+              />
+              <label htmlFor="isUnder35" className="cursor-pointer flex-grow">
+                Hai meno di 35 anni? (Riduzione contributi INPS del 35%)
+              </label>
+            </div>
+
             <div className="flex items-center bg-gray-50 p-3 rounded-lg hover:bg-gray-100 transition-colors">
               <input
                 type="checkbox"

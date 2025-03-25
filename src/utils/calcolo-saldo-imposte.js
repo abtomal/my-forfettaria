@@ -1,6 +1,6 @@
 import { calcolaContributiInps } from './calcolatori';
 
-export const calcolaAccontiEImposte = (fatturatoPrecedente, fatturato, coefficiente, annoApertura) => {
+export const calcolaAccontiEImposte = (fatturatoPrecedente, fatturato, coefficiente, annoApertura, isUnder35 = false, hasCassaPrivata = false) => {
     const annoCorrente = new Date().getFullYear();
     
     // Verifica se l'utente ha diritto all'aliquota agevolata del 5% (primi 5 anni)
@@ -31,17 +31,27 @@ export const calcolaAccontiEImposte = (fatturatoPrecedente, fatturato, coefficie
     }
   
     // Calcola l'imposta dell'anno precedente (base per gli acconti versati)
-    // MODIFICA: Calcolo corretto includendo i contributi INPS
     const redditoImponibilePrecedente = parseFloat(fatturatoPrecedente) * (coefficiente / 100);
-    const contributiInpsPrecedenti = calcolaContributiInps(redditoImponibilePrecedente, 'commerciante', false);
+    const contributiInpsPrecedenti = calcolaContributiInps(
+      redditoImponibilePrecedente, 
+      'commerciante', 
+      false, 
+      isUnder35, 
+      hasCassaPrivata
+    );
     const imponibileNettoPrecedente = redditoImponibilePrecedente - contributiInpsPrecedenti;
     const aliquotaPrecedente = isFirst5Years ? 0.05 : 0.15;
     const impostaPrecedente = imponibileNettoPrecedente * aliquotaPrecedente;
   
     // Calcola l'imposta effettiva dell'anno corrente
-    // MODIFICA: Calcolo corretto includendo i contributi INPS
     const redditoImponibile = parseFloat(fatturato) * (coefficiente / 100);
-    const contributiInps = calcolaContributiInps(redditoImponibile, 'commerciante', false);
+    const contributiInps = calcolaContributiInps(
+      redditoImponibile, 
+      'commerciante', 
+      false, 
+      isUnder35, 
+      hasCassaPrivata
+    );
     const imponibileNetto = redditoImponibile - contributiInps;
     const aliquotaCorrente = isFirst5Years ? 0.05 : 0.15;
     const impostaCorrente = imponibileNetto * aliquotaCorrente;

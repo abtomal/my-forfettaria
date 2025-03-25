@@ -1,6 +1,7 @@
 // src/components/gestioneFatture/ImpostazioniModal.jsx
 import React from 'react';
 import { Settings, Calendar } from 'lucide-react';
+import { verificaCassaPrivata } from '../../utils/calcolatori'; 
 
 const ImpostazioniModal = ({
   datiUtente,
@@ -25,7 +26,7 @@ const ImpostazioniModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 overflow-y-auto">
       <div className="bg-white rounded-lg shadow-lg w-full max-w-xl max-h-[90vh] overflow-y-auto">
         <div className="p-5 border-b flex justify-between items-center bg-gray-50">
           <h2 className="text-xl font-bold flex items-center">
@@ -97,7 +98,10 @@ const ImpostazioniModal = ({
                     setDatiUtente({
                       ...datiUtente,
                       codiceAteco: '',
-                      coefficienteRedditività: 0
+                      coefficienteRedditività: 0,
+                      hasCassaPrivata: false,
+                      cassaPrivata: '',
+                      nomeCassa: ''
                     });
                   }}
                   className="absolute right-2 top-2 text-gray-400 hover:text-gray-600 p-1 rounded-full hover:bg-gray-100"
@@ -115,8 +119,18 @@ const ImpostazioniModal = ({
                   <button
                     key={ateco.codice}
                     type="button"
-                    onClick={() => selezionaAtecoImpostazioni(ateco)}
-                    className="w-full text-left px-4 py-3 hover:bg-gray-50 flex flex-col border-b"
+                    onClick={() => {
+                      // Verificare se c'è una cassa privata per questo ATECO
+                      const risultatoCassa = verificaCassaPrivata(ateco.codice);
+                      
+                      selezionaAtecoImpostazioni({
+                        ...ateco,
+                        hasCassaPrivata: risultatoCassa.hasCassaPrivata,
+                        cassaPrivata: risultatoCassa.cassaPrivata || '',
+                        nomeCassa: risultatoCassa.nomeCassa || ''
+                      });
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-gray-50 flex flex-col border-b transition-colors"
                   >
                     <div className="flex justify-between items-center">
                       <span className="font-medium">
@@ -136,6 +150,11 @@ const ImpostazioniModal = ({
                       <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">
                         {ateco.tipo === 'artigiano' ? 'Artigiano' : 'Commerciante'}
                       </span>
+                      {verificaCassaPrivata(ateco.codice).hasCassaPrivata && (
+                        <span className="text-xs bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded">
+                          Cassa Privata
+                        </span>
+                      )}
                     </div>
                   </button>
                 ))}
@@ -168,8 +187,39 @@ const ImpostazioniModal = ({
                   </span>
                 </div>
               </div>
+              
+              {/* Messaggio cassa privata */}
+              {datiUtente.hasCassaPrivata && (
+                <div className="mt-3 p-2 bg-yellow-100 rounded-lg text-yellow-800 text-sm">
+                  <p className="flex items-center">
+                    <svg className="w-4 h-4 mr-1 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Questa professione richiede l'iscrizione a <strong>{datiUtente.nomeCassa}</strong> invece dell'INPS.
+                  </p>
+                </div>
+              )}
             </div>
           )}
+          
+          {/* Aggiunto: sezione per under 35 */}
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <h4 className="text-sm font-medium mb-2 text-gray-700">Agevolazioni</h4>
+            <div className="space-y-2">
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="isUnder35"
+                  checked={datiUtente.isUnder35}
+                  onChange={(e) => setDatiUtente({...datiUtente, isUnder35: e.target.checked})}
+                  className="w-4 h-4 text-blue-600 mr-2 focus:ring-blue-500"
+                />
+                <label htmlFor="isUnder35" className="text-sm">
+                  Ho meno di 35 anni (riduzione contributi del 35%)
+                </label>
+              </div>
+            </div>
+          </div>
           
           <button
             type="submit"
